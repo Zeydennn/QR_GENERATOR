@@ -1,9 +1,13 @@
-# QR_GENERATOR
-Program berbasis python yang memiliki fungsi untuk membuat kode QR dari sebuah teks / tautan.
+# QR Generator
+Program Python dengan tampilan GUI untuk membuat kode QR dari teks atau tautan. Cukup ketik teks atau tempel tautan, lalu kode QR langsung dibuat dan bisa dipindai dengan kamera ponsel. Proyek ini dikembangkan bertahap, dimulai dari fitur dasar lalu ditambah fitur lain di setiap commit.
 
-## Instalasi
-pip install -r requirements.txt
-```
+## Fitur
+- Membuat kode QR dari teks atau tautan
+- Tampilan jendela yang sederhana dan mudah dipakai
+- Hasil kode QR bisa langsung dipindai dengan kamera ponsel
 
-## Cara pakai
-python qr_generator.py "https://example.com"
+## Struktur proyek
+- `app.py`: tampilan aplikasi
+- `qr_core.py`: logika pembuatan kode QR
+- `requirements.txt`: daftar pustaka
+- `.gitignore`: daftar file yang diabaikan git
