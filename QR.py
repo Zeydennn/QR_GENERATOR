@@ -171,3 +171,67 @@ def add_frame(img, fg_color, bg_color, label="SCAN ME"):
     y = pad + h + (band - text_h) / 2 - box[1]
     draw.text((x, y), label, font=font, fill="white")
     return canvas
+class QRGeneratorApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title(APP_TITLE)
+        self.root.geometry(WINDOW_SIZE)
+        self.root.resizable(False, False)
+        self.root.configure(bg=PAGE_BG)
+
+        self.qr_image = None
+        self.photo = None
+        self.content_type = "url"
+        self.wifi_security = "WPA"
+        self._after_id = None
+
+        self.vars = {}
+        for key, info in CONTENT_TYPES.items():
+            self.vars[key] = {}
+            for field_key, _ in info["fields"]:
+                var = tk.StringVar()
+                var.trace_add("write", lambda *args: self.schedule_update())
+                self.vars[key][field_key] = var
+
+        self.create_navbar()
+        self.create_hero()
+
+    def create_navbar(self):
+        nav = tk.Frame(self.root, bg=WHITE, height=64)
+        nav.pack(fill="x")
+        nav.pack_propagate(False)
+
+        logo = tk.Frame(nav, bg=PRIMARY, width=34, height=34)
+        logo.pack(side="left", padx=(32, 10), pady=15)
+        logo.pack_propagate(False)
+        tk.Label(logo, text="QR", bg=PRIMARY, fg="white",
+                 font=(FONT, 11, "bold")).pack(expand=True)
+
+        tk.Label(nav, text="QR-Maker", bg=WHITE, fg=TEXT,
+                 font=(FONT, 15, "bold")).pack(side="left")
+
+        tk.Label(nav, text="Gratis  •  Tanpa daftar  •  Langsung unduh",
+                 bg=WHITE, fg=MUTED, font=(FONT, 10)).pack(side="right", padx=32)
+
+        tk.Frame(self.root, bg=BORDER, height=1).pack(fill="x")
+
+    def create_hero(self):
+        hero = tk.Frame(self.root, bg=PAGE_BG)
+        hero.pack(fill="x", pady=(14, 0))
+        tk.Label(
+            hero, text="Pembuat Kode QR Gratis",
+            bg=PAGE_BG, fg=TEXT, font=(FONT, 24, "bold")
+        ).pack()
+        tk.Label(
+            hero, text="Pilih jenis, isi konten, atur desain. Kode QR langsung muncul.",
+            bg=PAGE_BG, fg=MUTED, font=(FONT, 11)
+        ).pack(pady=(4, 0))
+
+    def schedule_update(self, immediate=False):
+        pass
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = QRGeneratorApp(root)
+    root.mainloop()
