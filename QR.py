@@ -235,3 +235,24 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = QRGeneratorApp(root)
     root.mainloop()
+        body = tk.Frame(self.root, bg=PAGE_BG)
+        body.pack(fill="both", expand=True, padx=32, pady=(14, 18))
+        body.columnconfigure(0, weight=1)
+        body.columnconfigure(1, weight=0)
+        body.rowconfigure(0, weight=1)
+
+        self.left_card = tk.Frame(
+            body, bg=WHITE, padx=26, pady=16,
+            highlightthickness=1, highlightbackground=BORDER
+        )
+        self.left_card.grid(row=0, column=0, sticky="nsew", padx=(0, 20))
+
+        self.right_card = tk.Frame(
+            body, bg=WHITE, padx=26, pady=16, width=360,
+            highlightthickness=1, highlightbackground=BORDER
+        )
+        self.right_card.grid(row=0, column=1, sticky="ns")
+        self.right_card.grid_propagate(False)
+        self.right_card.pack_propagate(False)
+
+        self.create_type_section()
