@@ -64,3 +64,78 @@ CONTENT_TYPES = {
         "fields": [("to", "Alamat email"), ("subject", "Subjek"), ("body", "Pesan")],
     },
 }
+class FlatButton(tk.Label):
+    def __init__(self, parent, text, command, bg, hover, fg, pady=11):
+        super().__init__(
+            parent, text=text, bg=bg, fg=fg,
+            font=(FONT, 11, "bold"), pady=pady, cursor="hand2"
+        )
+        self.normal_bg = bg
+        self.hover_bg = hover
+        self.command = command
+        self.bind("<Enter>", lambda e: self.config(bg=self.hover_bg))
+        self.bind("<Leave>", lambda e: self.config(bg=self.normal_bg))
+        self.bind("<Button-1>", lambda e: self.command())
+
+
+class Segmented(tk.Frame):
+    def __init__(self, parent, options, value, command, bg=WHITE):
+        super().__init__(parent, bg=bg)
+        self.value = value
+        self.command = command
+        self.buttons = {}
+        for i, option in enumerate(options):
+            self.columnconfigure(i, weight=1)
+            btn = tk.Label(
+                self, text=option, font=(FONT, 10, "bold"),
+                pady=6, padx=10, cursor="hand2"
+            )
+            btn.grid(row=0, column=i, sticky="ew", padx=(0 if i == 0 else 3, 0))
+            btn.bind("<Button-1>", lambda e, o=option: self.select(o))
+            self.buttons[option] = btn
+        self.refresh()
+
+    def refresh(self):
+        for option, btn in self.buttons.items():
+            if option == self.value:
+                btn.config(bg=PRIMARY, fg="white")
+            else:
+                btn.config(bg=SECOND, fg=MUTED)
+
+    def select(self, option):
+        self.value = option
+        self.refresh()
+        self.command(option)
+
+
+class ColorPicker(tk.Frame):
+    def __init__(self, parent, colors, value, command, bg=WHITE):
+        super().__init__(parent, bg=bg)
+        self.colors = colors
+        self.value = value
+        self.command = command
+        self.swatches = {}
+        for name, hex_color in colors.items():
+            swatch = tk.Frame(
+                self, width=30, height=30, bg=hex_color,
+                highlightthickness=2, highlightbackground=BORDER,
+                cursor="hand2"
+            )
+            swatch.pack(side="left", padx=(0, 8))
+            swatch.bind("<Button-1>", lambda e, n=name: self.select(n))
+            self.swatches[name] = swatch
+        self.refresh()
+
+    def refresh(self):
+        for name, swatch in self.swatches.items():
+            swatch.config(
+                highlightbackground=PRIMARY if name == self.value else BORDER
+            )
+
+    def select(self, name):
+        self.value = name
+        self.refresh()
+        self.command(name)
+
+    def hex(self):
+        return self.colors[self.value]
