@@ -139,3 +139,35 @@ class ColorPicker(tk.Frame):
 
     def hex(self):
         return self.colors[self.value]
+def load_font(size):
+    for name in ("arialbd.ttf", "Arial Bold.ttf", "DejaVuSans-Bold.ttf", "arial.ttf"):
+        try:
+            return ImageFont.truetype(name, size)
+        except Exception:
+            continue
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:
+        return ImageFont.load_default()
+
+
+def add_frame(img, fg_color, bg_color, label="SCAN ME"):
+    w, h = img.size
+    pad = 28
+    band = 80
+    total_w, total_h = w + pad * 2, h + pad + band
+
+    canvas = Image.new("RGB", (total_w, total_h), bg_color)
+    draw = ImageDraw.Draw(canvas)
+    draw.rounded_rectangle(
+        [0, 0, total_w - 1, total_h - 1], radius=30, fill=fg_color
+    )
+    canvas.paste(img, (pad, pad))
+
+    font = load_font(38)
+    box = draw.textbbox((0, 0), label, font=font)
+    text_w, text_h = box[2] - box[0], box[3] - box[1]
+    x = (total_w - text_w) / 2 - box[0]
+    y = pad + h + (band - text_h) / 2 - box[1]
+    draw.text((x, y), label, font=font, fill="white")
+    return canvas
