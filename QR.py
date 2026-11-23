@@ -227,6 +227,7 @@ class QRGeneratorApp:
         self.create_type_section()
         self.create_content_section()
         self.create_design_section()
+        self.create_preview_section()
 
         self.build_fields()
 
@@ -389,6 +390,52 @@ class QRGeneratorApp:
         )
         self.quality_label.pack(fill="x", pady=(6, 0))
 
+    def create_preview_section(self):
+        card = self.right_card
+
+        tk.Label(
+            card, text="Pratinjau", bg=WHITE, fg=TEXT, font=(FONT, 12, "bold")
+        ).pack(anchor="w")
+
+        box = tk.Frame(
+            card, bg=PAGE_BG, width=PREVIEW_SIZE + 40, height=PREVIEW_SIZE + 40,
+            highlightthickness=1, highlightbackground=BORDER
+        )
+        box.pack(pady=(12, 0))
+        box.pack_propagate(False)
+
+        self.preview_label = tk.Label(
+            box, text="Kode QR akan\nmuncul di sini",
+            bg=PAGE_BG, fg=MUTED, font=(FONT, 11)
+        )
+        self.preview_label.pack(expand=True)
+
+        self.info_label = tk.Label(
+            card, text="", bg=WHITE, fg=MUTED, font=(FONT, 9)
+        )
+        self.info_label.pack(pady=(8, 0))
+
+        tk.Label(
+            card, text="Format unduhan", bg=WHITE, fg=MUTED, font=(FONT, 9)
+        ).pack(anchor="w", pady=(10, 6))
+        self.format_seg = Segmented(card, ["PNG", "JPG"], "PNG", lambda o: None)
+        self.format_seg.pack(fill="x")
+
+        FlatButton(
+            card, "Unduh Kode QR", self.save_qr,
+            PRIMARY, PRIMARY_HOVER, "white", pady=12
+        ).pack(fill="x", pady=(12, 0))
+        FlatButton(
+            card, "Hapus semua", self.clear_all,
+            SECOND, SECOND_HOVER, TEXT
+        ).pack(fill="x", pady=(8, 0))
+
+        self.status = tk.Label(
+            card, text="Isi konten untuk membuat kode QR",
+            bg=WHITE, fg=MUTED, font=(FONT, 9), wraplength=300, justify="left"
+        )
+        self.status.pack(anchor="w", pady=(10, 0))
+
     def select_type(self, key):
         self.content_type = key
         self.refresh_tiles()
@@ -400,6 +447,15 @@ class QRGeneratorApp:
         self.schedule_update(True)
 
     def schedule_update(self, immediate=False):
+        pass
+
+    def set_status(self, message, color=MUTED):
+        self.status.config(text=message, fg=color)
+
+    def save_qr(self):
+        pass
+
+    def clear_all(self):
         pass
 
 
