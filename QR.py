@@ -230,6 +230,7 @@ class QRGeneratorApp:
         self.create_preview_section()
 
         self.build_fields()
+        self.root.bind("<Return>", lambda event: self.update_qr())
 
     def create_navbar(self):
         nav = tk.Frame(self.root, bg=WHITE, height=64)
@@ -447,10 +448,119 @@ class QRGeneratorApp:
         self.schedule_update(True)
 
     def schedule_update(self, immediate=False):
-        pass
+        if self._after_id is not None:
+            self.root.after_cancel(self._after_id)
+        delay = 10 if immediate else 400
+        self._after_id = self.root.after(delay, self.update_qr)
 
     def set_status(self, message, color=MUTED):
         self.status.config(text=message, fg=color)
+
+    def get_value(self, key):
+        return self.vars[self.content_type][key].get().strip()
+
+    @staticmethod
+    def escape_wifi(text):
+        for ch in ("\\", ";", ",", ":", '"'):
+            text = text.replace(ch, "\\" + ch)
+        return text
+
+    def build_data(self):
+        kind = self.content_type
+
+        if kind == "url":
+            value = self.get_value("url")
+            if value and "://" not in value and " " not in value and "." in value:
+                value = "https://" + value
+            return value
+
+        if kind == "text":
+            return self.get_value("text")
+
+        if kind == "wifi":
+            ssid = self.get_value("ssid")
+            if not ssid:
+                return ""
+            password = self.vars["wifi"]["password"].get()
+            security = {"WPA": "WPA", "WEP": "WEP", "Tanpa": "nopass"}[self.wifi_security]
+            data = f"WIFI:T:{security};S:{self.escape_wifi(ssid)};"
+            if security != "nopass":
+                data += f"P:{self.escape_wifi(password)};"
+            return data + ";"
+
+        if kind == "email":
+            to = self.get_value("to")
+            if not to:
+                return ""
+            params = []
+            subject = self.get_value("subject")
+            body = self.get_value("body")
+            if subject:
+                params.append("subject=" + quote(subject, safe=""))
+            if body:
+                params.append("body=" + quote(body, safe=""))
+            data = "mailto:" + to
+            if params:
+                data += "?" + "&".join(params)
+            return data
+
+        return ""
+
+    def render_qr(self, data):
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=EC_LEVELS[EC_DEFAULT],
+            box_size=10,
+            border=4
+        )
+        qr.add_data(data)
+        qr.make(fit=True)
+
+        fg = self.fg_picker.hex()
+        bg = self.bg_picker.hex()
+        img = qr.make_image(fill_color=fg, back_color=bg).convert("RGB")
+
+        if self.frame_seg.value == "SCAN ME":
+            img = add_frame(img, fg, bg)
+        return img, qr
+
+    def update_qr(self):
+        self._after_id = None
+        data = self.build_data()
+
+        if not data:
+            self.qr_image = None
+            self.show_placeholder()
+            self.set_status("Isi konten untuk membuat kode QR", MUTED)
+            return
+
+        try:
+            img, qr = self.render_qr(data)
+        except Exception as e:
+            self.set_status(f"Gagal membuat QR: {e}", DANGER)
+            return
+
+        self.qr_image = img
+        self.display_qr()
+        self.info_label.config(
+            text=f"Versi {qr.version}  •  {qr.modules_count}×{qr.modules_count} modul"
+                 f"  •  Koreksi {EC_DEFAULT}"
+        )
+        self.set_status("Kode QR siap diunduh", SUCCESS)
+
+    def display_qr(self):
+        w, h = self.qr_image.size
+        scale = min(PREVIEW_SIZE / w, PREVIEW_SIZE / h)
+        size = (max(1, int(w * scale)), max(1, int(h * scale)))
+        resample = Image.LANCZOS if self.frame_seg.value == "SCAN ME" else Image.NEAREST
+        resized = self.qr_image.resize(size, resample)
+        self.photo = ImageTk.PhotoImage(resized)
+        self.preview_label.config(image=self.photo, text="")
+
+    def show_placeholder(self):
+        self.photo = None
+        self.preview_label.config(image="", text="Kode QR akan\nmuncul di sini")
+        self.info_label.config(text="")
 
     def save_qr(self):
         pass
