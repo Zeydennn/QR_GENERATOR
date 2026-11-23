@@ -231,6 +231,7 @@ class QRGeneratorApp:
 
         self.build_fields()
         self.root.bind("<Return>", lambda event: self.update_qr())
+        self.root.bind("<Control-s>", lambda event: self.save_qr())
 
     def create_navbar(self):
         nav = tk.Frame(self.root, bg=WHITE, height=64)
@@ -506,6 +507,69 @@ class QRGeneratorApp:
 
         return ""
 
+    @staticmethod
+    def luminance(hex_color):
+        def channel(c):
+            return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+        r, g, b = [int(hex_color[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+        return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+
+    def evaluate_quality(self, qr):
+        l_fg = self.luminance(self.fg_picker.hex())
+        l_bg = self.luminance(self.bg_picker.hex())
+        ratio = (max(l_fg, l_bg) + 0.05) / (min(l_fg, l_bg) + 0.05)
+
+        if l_fg > l_bg:
+            contrast_score = 20
+        elif ratio >= 7:
+            contrast_score = 100
+        elif ratio >= 4.5:
+            contrast_score = 80
+        elif ratio >= 3:
+            contrast_score = 50
+        else:
+            contrast_score = 20
+
+        version = qr.version
+        if version <= 7:
+            density_score = 100
+        elif version <= 12:
+            density_score = 90
+        elif version <= 20:
+            density_score = 78
+        elif version <= 30:
+            density_score = 60
+        else:
+            density_score = 40
+
+        score = min(contrast_score, density_score)
+        if score >= 85:
+            label, color = "Sangat baik", SUCCESS
+        elif score >= 65:
+            label, color = "Baik", SUCCESS
+        elif score >= 45:
+            label, color = "Cukup", WARNING
+        else:
+            label, color = "Sulit dipindai", DANGER
+
+        if contrast_score < density_score:
+            hint = "kontras rendah"
+        elif density_score < 90:
+            hint = "data panjang"
+        else:
+            hint = "mudah dipindai"
+        return score, label, color, hint
+
+    def update_quality(self, qr=None):
+        if qr is None:
+            self.quality_fill.place_forget()
+            self.quality_label.config(text="Belum ada kode QR", fg=MUTED)
+            return
+        score, label, color, hint = self.evaluate_quality(qr)
+        self.quality_fill.config(bg=color)
+        self.quality_fill.place(x=0, y=0, relheight=1, relwidth=score / 100)
+        self.quality_label.config(text=f"{label} • {score}%  ({hint})", fg=color)
+
     def render_qr(self, data):
         qr = qrcode.QRCode(
             version=None,
@@ -542,6 +606,7 @@ class QRGeneratorApp:
 
         self.qr_image = img
         self.display_qr()
+        self.update_quality(qr)
         self.info_label.config(
             text=f"Versi {qr.version}  •  {qr.modules_count}×{qr.modules_count} modul"
                  f"  •  Koreksi {EC_DEFAULT}"
@@ -561,12 +626,36 @@ class QRGeneratorApp:
         self.photo = None
         self.preview_label.config(image="", text="Kode QR akan\nmuncul di sini")
         self.info_label.config(text="")
+        self.update_quality(None)
 
     def save_qr(self):
-        pass
+        if self.qr_image is None:
+            self.set_status("Buat kode QR terlebih dahulu!", WARNING)
+            return
+
+        if self.format_seg.value == "PNG":
+            ext, types = ".png", [("PNG", "*.png"), ("JPEG", "*.jpg")]
+        else:
+            ext, types = ".jpg", [("JPEG", "*.jpg"), ("PNG", "*.png")]
+
+        path = filedialog.asksaveasfilename(defaultextension=ext, filetypes=types)
+        if path:
+            try:
+                self.qr_image.save(path)
+                self.set_status("Tersimpan di: " + path, SUCCESS)
+            except Exception as e:
+                self.set_status(f"Gagal menyimpan: {e}", DANGER)
 
     def clear_all(self):
-        pass
+        for fields in self.vars.values():
+            for var in fields.values():
+                var.set("")
+        if self._after_id is not None:
+            self.root.after_cancel(self._after_id)
+            self._after_id = None
+        self.qr_image = None
+        self.show_placeholder()
+        self.set_status("Isi konten untuk membuat kode QR", MUTED)
 
 
 if __name__ == "__main__":
