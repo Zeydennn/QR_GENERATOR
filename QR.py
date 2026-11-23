@@ -226,6 +226,8 @@ class QRGeneratorApp:
 
         self.create_type_section()
         self.create_content_section()
+        self.create_design_section()
+
         self.build_fields()
 
     def create_navbar(self):
@@ -258,9 +260,6 @@ class QRGeneratorApp:
             hero, text="Pilih jenis, isi konten, atur desain. Kode QR langsung muncul.",
             bg=PAGE_BG, fg=MUTED, font=(FONT, 11)
         ).pack(pady=(4, 0))
-
-    def schedule_update(self, immediate=False):
-        pass
 
     def step_header(self, number, title, top=0):
         row = tk.Frame(self.left_card, bg=WHITE)
@@ -310,12 +309,6 @@ class QRGeneratorApp:
             glyph.config(bg=bg)
             caption.config(bg=bg)
 
-    def select_type(self, key):
-        self.content_type = key
-        self.refresh_tiles()
-        self.build_fields()
-        self.schedule_update(True)
-
     def create_content_section(self):
         self.step_header(2, "Isi konten", top=16)
         self.fields_frame = tk.Frame(self.left_card, bg=WHITE, height=190)
@@ -356,9 +349,58 @@ class QRGeneratorApp:
         if first_entry is not None:
             first_entry.focus()
 
+    def create_design_section(self):
+        self.step_header(3, "Atur desain", top=12)
+
+        grid = tk.Frame(self.left_card, bg=WHITE)
+        grid.pack(fill="x")
+        grid.columnconfigure(0, weight=1, uniform="design")
+        grid.columnconfigure(1, weight=1, uniform="design")
+
+        def caption(row, column, text):
+            tk.Label(
+                grid, text=text, bg=WHITE, fg=MUTED, font=(FONT, 9)
+            ).grid(row=row, column=column, sticky="w", pady=(0, 6))
+
+        caption(0, 0, "Warna QR")
+        self.fg_picker = ColorPicker(grid, FG_COLORS, "Hitam", lambda n: self.schedule_update(True))
+        self.fg_picker.grid(row=1, column=0, sticky="w", pady=(0, 10))
+
+        caption(0, 1, "Warna latar")
+        self.bg_picker = ColorPicker(grid, BG_COLORS, "Putih", lambda n: self.schedule_update(True))
+        self.bg_picker.grid(row=1, column=1, sticky="w", pady=(0, 10))
+
+        caption(2, 0, "Bingkai")
+        self.frame_seg = Segmented(
+            grid, ["Tanpa", "SCAN ME"], "Tanpa",
+            lambda o: self.schedule_update(True)
+        )
+        self.frame_seg.grid(row=3, column=0, sticky="ew", padx=(0, 20))
+
+        caption(2, 1, "Kualitas QR (keterbacaan)")
+        quality = tk.Frame(grid, bg=WHITE)
+        quality.grid(row=3, column=1, sticky="new")
+        self.quality_trough = tk.Frame(quality, bg=SECOND, height=10)
+        self.quality_trough.pack(fill="x", pady=(8, 0))
+        self.quality_fill = tk.Frame(self.quality_trough, bg=SUCCESS)
+        self.quality_label = tk.Label(
+            quality, text="Belum ada kode QR", bg=WHITE, fg=MUTED,
+            font=(FONT, 9), anchor="w"
+        )
+        self.quality_label.pack(fill="x", pady=(6, 0))
+
+    def select_type(self, key):
+        self.content_type = key
+        self.refresh_tiles()
+        self.build_fields()
+        self.schedule_update(True)
+
     def set_wifi_security(self, value):
         self.wifi_security = value
         self.schedule_update(True)
+
+    def schedule_update(self, immediate=False):
+        pass
 
 
 if __name__ == "__main__":
