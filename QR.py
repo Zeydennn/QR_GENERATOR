@@ -1,7 +1,9 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import filedialog
+from urllib.parse import quote
 import qrcode
-from PIL import Image, ImageTk
+from PIL import Image, ImageDraw, ImageFont, ImageTk
+
 APP_TITLE = "QR-Maker - Pembuat Kode QR Gratis"
 WINDOW_SIZE = "1060x760"
 PREVIEW_SIZE = 260
@@ -64,6 +66,8 @@ CONTENT_TYPES = {
         "fields": [("to", "Alamat email"), ("subject", "Subjek"), ("body", "Pesan")],
     },
 }
+
+
 class FlatButton(tk.Label):
     def __init__(self, parent, text, command, bg, hover, fg, pady=11):
         super().__init__(
@@ -139,6 +143,8 @@ class ColorPicker(tk.Frame):
 
     def hex(self):
         return self.colors[self.value]
+
+
 def load_font(size):
     for name in ("arialbd.ttf", "Arial Bold.ttf", "DejaVuSans-Bold.ttf", "arial.ttf"):
         try:
@@ -171,6 +177,8 @@ def add_frame(img, fg_color, bg_color, label="SCAN ME"):
     y = pad + h + (band - text_h) / 2 - box[1]
     draw.text((x, y), label, font=font, fill="white")
     return canvas
+
+
 class QRGeneratorApp:
     def __init__(self, root):
         self.root = root
@@ -195,6 +203,30 @@ class QRGeneratorApp:
 
         self.create_navbar()
         self.create_hero()
+
+        body = tk.Frame(self.root, bg=PAGE_BG)
+        body.pack(fill="both", expand=True, padx=32, pady=(14, 18))
+        body.columnconfigure(0, weight=1)
+        body.columnconfigure(1, weight=0)
+        body.rowconfigure(0, weight=1)
+
+        self.left_card = tk.Frame(
+            body, bg=WHITE, padx=26, pady=16,
+            highlightthickness=1, highlightbackground=BORDER
+        )
+        self.left_card.grid(row=0, column=0, sticky="nsew", padx=(0, 20))
+
+        self.right_card = tk.Frame(
+            body, bg=WHITE, padx=26, pady=16, width=360,
+            highlightthickness=1, highlightbackground=BORDER
+        )
+        self.right_card.grid(row=0, column=1, sticky="ns")
+        self.right_card.grid_propagate(False)
+        self.right_card.pack_propagate(False)
+
+        self.create_type_section()
+        self.create_content_section()
+        self.build_fields()
 
     def create_navbar(self):
         nav = tk.Frame(self.root, bg=WHITE, height=64)
@@ -230,29 +262,106 @@ class QRGeneratorApp:
     def schedule_update(self, immediate=False):
         pass
 
+    def step_header(self, number, title, top=0):
+        row = tk.Frame(self.left_card, bg=WHITE)
+        row.pack(fill="x", pady=(top, 10))
+        tk.Label(
+            row, text=str(number), bg=PRIMARY, fg="white",
+            font=(FONT, 9, "bold"), width=2
+        ).pack(side="left")
+        tk.Label(
+            row, text=title, bg=WHITE, fg=TEXT, font=(FONT, 12, "bold")
+        ).pack(side="left", padx=(10, 0))
+
+    def create_type_section(self):
+        self.step_header(1, "Pilih jenis konten")
+
+        row = tk.Frame(self.left_card, bg=WHITE)
+        row.pack(fill="x")
+        self.tiles = {}
+        for i, (key, info) in enumerate(CONTENT_TYPES.items()):
+            row.columnconfigure(i, weight=1, uniform="tile")
+            tile = tk.Frame(
+                row, bg=WHITE, highlightthickness=2,
+                highlightbackground=BORDER, cursor="hand2", height=66
+            )
+            tile.grid(row=0, column=i, sticky="ew", padx=(0 if i == 0 else 8, 0))
+            tile.pack_propagate(False)
+
+            glyph = tk.Label(tile, text=info["glyph"], bg=WHITE, fg=PRIMARY,
+                             font=(FONT, 14, "bold"), cursor="hand2")
+            glyph.pack(pady=(9, 0))
+            caption = tk.Label(tile, text=info["caption"], bg=WHITE, fg=TEXT,
+                               font=(FONT, 9), cursor="hand2")
+            caption.pack()
+
+            for widget in (tile, glyph, caption):
+                widget.bind("<Button-1>", lambda e, k=key: self.select_type(k))
+            self.tiles[key] = (tile, glyph, caption)
+        self.refresh_tiles()
+
+    def refresh_tiles(self):
+        for key, (tile, glyph, caption) in self.tiles.items():
+            selected = key == self.content_type
+            bg = PRIMARY_SOFT if selected else WHITE
+            tile.config(
+                bg=bg, highlightbackground=PRIMARY if selected else BORDER
+            )
+            glyph.config(bg=bg)
+            caption.config(bg=bg)
+
+    def select_type(self, key):
+        self.content_type = key
+        self.refresh_tiles()
+        self.build_fields()
+        self.schedule_update(True)
+
+    def create_content_section(self):
+        self.step_header(2, "Isi konten", top=16)
+        self.fields_frame = tk.Frame(self.left_card, bg=WHITE, height=190)
+        self.fields_frame.pack(fill="x")
+        self.fields_frame.pack_propagate(False)
+
+    def build_fields(self):
+        for child in self.fields_frame.winfo_children():
+            child.destroy()
+
+        first_entry = None
+        info = CONTENT_TYPES[self.content_type]
+        for field_key, label in info["fields"]:
+            tk.Label(
+                self.fields_frame, text=label, bg=WHITE, fg=MUTED,
+                font=(FONT, 9)
+            ).pack(anchor="w")
+            entry = tk.Entry(
+                self.fields_frame, textvariable=self.vars[self.content_type][field_key],
+                font=(FONT, 11), bg=WHITE, fg=TEXT, insertbackground=TEXT,
+                relief="flat", highlightthickness=1,
+                highlightbackground=BORDER, highlightcolor=PRIMARY
+            )
+            entry.pack(fill="x", ipady=5, pady=(3, 8))
+            if first_entry is None:
+                first_entry = entry
+
+        if self.content_type == "wifi":
+            tk.Label(
+                self.fields_frame, text="Keamanan", bg=WHITE, fg=MUTED,
+                font=(FONT, 9)
+            ).pack(anchor="w")
+            Segmented(
+                self.fields_frame, ["WPA", "WEP", "Tanpa"],
+                self.wifi_security, self.set_wifi_security
+            ).pack(fill="x", pady=(3, 0))
+
+        if first_entry is not None:
+            first_entry.focus()
+
+    def set_wifi_security(self, value):
+        self.wifi_security = value
+        self.schedule_update(True)
+
 
 if __name__ == "__main__":
     root = tk.Tk()
     app = QRGeneratorApp(root)
     root.mainloop()
-        body = tk.Frame(self.root, bg=PAGE_BG)
-        body.pack(fill="both", expand=True, padx=32, pady=(14, 18))
-        body.columnconfigure(0, weight=1)
-        body.columnconfigure(1, weight=0)
-        body.rowconfigure(0, weight=1)
-
-        self.left_card = tk.Frame(
-            body, bg=WHITE, padx=26, pady=16,
-            highlightthickness=1, highlightbackground=BORDER
-        )
-        self.left_card.grid(row=0, column=0, sticky="nsew", padx=(0, 20))
-
-        self.right_card = tk.Frame(
-            body, bg=WHITE, padx=26, pady=16, width=360,
-            highlightthickness=1, highlightbackground=BORDER
-        )
-        self.right_card.grid(row=0, column=1, sticky="ns")
-        self.right_card.grid_propagate(False)
-        self.right_card.pack_propagate(False)
-
-        self.create_type_section()
